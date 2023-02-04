@@ -227,6 +227,9 @@ SITE_ID = 1
 ROOT_URLCONF = 'coriolis.urls'
 WSGI_APPLICATION = 'coriolis.wsgi.application'
 
+
+CSRF_TRUSTED_ORIGINS = env("CSRF_TRUSTED_ORIGINS").split(',')
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',

@@ -1,0 +1,39 @@
+version: '3'
+services:
+  nginx-proxy:
+    image: nginx:latest
+    volumes:
+      - ./contrib/docker/nginx/templates:/etc/nginx/templates
+      - /usr/snowfall/media:/media:rw
+    environment:
+      HOST_URL: snowfall.broniessilesia.pl
+    ports:
+      - 80:80
+    depends_on:
+      - coriolis
+  coriolis:
+    build: ./
+    command: ["/app/.env", "--log-file", "-", "coriolis.wsgi"]
+    volumes:
+      - ./env/.env:/app/.env:ro
+      - /usr/snowfall/media:/app/media:rw
+    ports:
+      - 8000
+    depends_on:
+      - postgres
+      - redis
+  postgres:
+    image: postgres:15.1
+    expose:
+      - 5432
+    env_file:
+      - env/.env.postgres
+    volumes:
+      - postgres_db:/var/lib/postgresql/data:rw
+  redis:
+    image: redis:7.0.8
+    expose:
+      - 6379
+
+volumes:
+  postgres_db:

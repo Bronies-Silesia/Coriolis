@@ -1,0 +1,7 @@
+.env*
+env/
+Dockerfile
+docker-compose*
+contrib*
+.idea*
+upgrade.sh
