@@ -1,15 +1,19 @@
 import json
 import logging
+from os import getenv
 from decimal import Decimal
 
 import requests
+from datetime import datetime
 from django.core.exceptions import ImproperlyConfigured
 from django.http import HttpResponse, HttpResponseForbidden
-from django.http.response import HttpResponseBadRequest
+from django.http.response import HttpResponseBadRequest, HttpResponseServerError
 from payments import PaymentStatus
 from payments.core import BasicProvider
 from payments.forms import PaymentForm
 from payments.models import BasePayment
+
+from events.models import Event, Ticket, Payment
 
 from payments_przelewy24.api import Transaction
 from payments_przelewy24.forms import ProcessForm
@@ -83,6 +87,41 @@ class Przelewy24Provider(BasicProvider):
                 )
                 form.save()
                 payment.change_status(PaymentStatus.CONFIRMED)
+
+                # Wysłanie bileta do API
+                try:
+                    ticket: Ticket = Ticket.objects.prefetch_related('user', 'event', 'type').get(id=payment.ticket.id)
+                except Ticket.DoesNotExist:
+                    logging.error(f"Issued a render job for missing ticket: {orderId}")
+                    raise Exception("Model not found")
+
+                try:
+                    url = getenv('TICKETER_URL')
+                    if url == "":
+                        raise Exception("bad ticketer url")
+
+                    payload={
+                        'ext_order_id': ticket.id,
+                        'ext_product_id': ticket.type.name,
+                        'name': ticket.name,
+                        'email': ticket.email,
+                        'client_id': '1',
+                        'quantity': '1',
+                        'purchase_date': datetime.today().strftime('%Y-%m-%d')
+                    }
+                    files=[]
+                    headers = {}
+                    response = requests.request("POST", url, headers=headers, data=payload, files=files)
+                    if response.status_code != 200:
+                        raise Exception("Renderer returned error !200.")
+                    data = response.json()
+                    if data.get('success') != "true":
+                        raise Exception("Response from renderer returned error.", data.get('message'))
+                    return HttpResponse("OK")
+                except Exception as e:
+                    logger.error(f"{str(e)}, {request.body.decode('utf-8')}")
+                    return HttpResponseServerError(e)        
+
             else:
                 error_str = ", ".join([f"{k}: {v}" for k, v in form.errors.items()])
                 logger.error(error_str)

@@ -5,15 +5,31 @@ services:
     volumes:
       - ./contrib/docker/nginx/templates:/etc/nginx/templates
       - /usr/snowfall/media:/media:rw
-    environment:
-      HOST_URL: snowfall.broniessilesia.pl
-    ports:
-      - 80:80
+    # environment:
+    #   HOST_URL: snowfall.broniessilesia.pl
+    # ports:
+    #   - 80:80
+    labels:
+      - "traefik.enable=true"
+      # HTTPS
+      - "traefik.http.routers.snowfall-coriolis.entrypoints=websecure"
+      - "traefik.http.routers.snowfall-coriolis.rule=Host(`snowfall.broniessilesia.pl`)"
+      - "traefik.http.routers.snowfall-coriolis.tls.certresolver=broniessilesiaresolver"
+      # HTTP to HTTPS redirect
+      - "traefik.http.routers.snowfall-coriolis-http.entrypoints=web"
+      - "traefik.http.routers.snowfall-coriolis-http.rule=Host(`snowfall.broniessilesia.pl`)"
+      - "traefik.http.routers.snowfall-coriolis-http.middlewares=traefik-redirectscheme"
+      - "traefik.http.middlewares.traefik-redirectscheme.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.traefik-redirectscheme.redirectscheme.permanent=true"
     depends_on:
       - coriolis
+    networks:
+      - web
+      - internal
+
   coriolis:
     build: ./
-    command: ["/app/.env", "--log-file", "-", "coriolis.wsgi"]
+    command: [ "/app/.env", "--log-file", "-", "coriolis.wsgi" ]
     volumes:
       - ./env/.env:/app/.env:ro
       - /usr/snowfall/media:/app/media:rw
@@ -22,6 +38,10 @@ services:
     depends_on:
       - postgres
       - redis
+    networks:
+      - web
+      - internal
+
   postgres:
     image: postgres:13
     expose:
@@ -30,10 +50,21 @@ services:
       - env/.env.postgres
     volumes:
       - postgres_db:/var/lib/postgresql/data:rw
+    networks:
+      - internal
   redis:
     image: redis:7.0.8
     expose:
       - 6379
+    networks:
+      - internal
 
 volumes:
   postgres_db:
+
+
+networks:
+  web:
+    external: true
+  internal:
+    external: false

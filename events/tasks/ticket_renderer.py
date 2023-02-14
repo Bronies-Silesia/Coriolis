@@ -101,8 +101,8 @@ def render_ticket_variant(data: dict, ticket: Ticket, variant: str, is_first: bo
 
 @dramatiq.actor(queue_name='ticket-renderer')
 def render_ticket_variants(ticket_id: str):
-    if not get_container_tool():
-        logging.error("Issued a render job with no render tools available.")
+    # if not get_container_tool():
+    #     logging.error("Issued a render job with no render tools available.")
 
     try:
         ticket: Ticket = Ticket.objects.prefetch_related('user', 'event', 'type').get(id=ticket_id)

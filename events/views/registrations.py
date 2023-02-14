@@ -153,7 +153,8 @@ class RegistrationView(FormView):
             messages.error(self.request, _("Could not save a new ticket - please contact event support."))
             return redirect('event_index', self.event.slug)
 
-        render_ticket_variants.send(str(ticket.id))
+        # render job
+        # render_ticket_variants.send(str(ticket.id))
 
         EmailMessage(
             _("%(event)s: Ticket '%(code)s'") % {
